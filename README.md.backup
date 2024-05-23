@@ -20,9 +20,11 @@ Let us start with some important physical requirements. Here is a list of hardwa
  * A paper clip
  * A USB-A (female) to micro-USB (male) adapter
  * A smartphone wire that has a USB-A (male) connector
+ * A powerbank (5V~1,2A with 10,000mAh recommended)
+ * A wire with micro-USB (male) and an end that fits your powerbank
  * A wireless home network (2.4GHz)
- * New MIFARE cards of your choice
- * At least one new MIFARE chinese clone card with changeable UID
+ * Blank MIFARE tags of your choice
+ * At least one new MIFARE chinese clone tag with changeable UID
  * A soldering kit
 
 ### 2.2 Hardware Setup 
@@ -200,7 +202,7 @@ Both times you will be asked to type in your password. The [scp](https://en.wiki
 You should see now something like this:
 <a name="hexcurseBlankCard"><p align="center"><img src="./images/hexcurse_blank_file.jpg" height="600px"></img></p></a>
 
-We use the ```-r 16``` argument to reshape the file so that exactly 16 bits per row are displayed. Explore the file with up and down arrow keys. The very first line is the block 0, the so-called manufacturer block. Here 01234567 is the 4 byte UID of the chip. That thing is sometimes 7 bytes long. It cannot be really distinguished by just looking at it. But later when reading a chip you will get the UID always displayed separately, so this is how you know then how long the UID actuall is. Further you may observe that there are tons of zeros. That is because the file is a blank card with almost no content. Why almost? Let's talk about the key blocks and what sectors are. I took an image from an amazing repository by [Pavel Zhovner](https://github.com/zhovner) - [mfread](https://github.com/zhovner/mfdread). Check it out, he has written a cool script for opening card files that also highlights keys and access bits with colors. Also the repository contains very detailed technical knowledge of the single components inside a card file.
+We use the ```-r 16``` argument to reshape the file so that exactly 16 bits per row are displayed. Explore the file with up and down arrow keys. The very first line is the block 0, the so-called manufacturer block. Here 01234567 is the 4 byte UID of the chip. That thing is sometimes 7 bytes long. It cannot be really distinguished by just looking at it. But later when reading a chip you will get the UID always displayed separately, so this is how you know then how long the UID actuall is. Further you may observe that there are tons of zeros. That is because the file is a blank card with almost no content. Why almost? Let's talk about the key blocks and what sectors are. I took an image from a repository by [Pavel Zhovner](https://github.com/zhovner) - [mfread](https://github.com/zhovner/mfdread). Check it out, he has written a nice script for opening card files that also highlights keys and access bits with colors. Also the repository contains very detailed technical knowledge of the single components inside a card file.
 <a name="sampleFileColored"><p align="center"><img src="./images/sample_file_colored.png" height="600px"></img></p></a>
 
 In the image above we see that a sector contains 4 blocks. There is a total of 16 sectors (0 to 15) inside a MIFARE classic 1K card and 16 × 4 = 64 blocks (0 to 63) in total. As said previously, block 0 contains the UID and manufacturer data. On regular cards, we cannot change this block no matter what we do. However, if we take a Chinese clone card, we can rewrite the block 0 as often as we want (later more). In each fourth block we see the so-called sector trailer that contains <span style="color:#F73992">Key A</span>, <span style="color:#7AD109">Access Bits</span>, and <span style="color:#5717F7">Key B</span>. The access bits are there to tell the reader what it can or can't do with the sector. Note that only the first three hex bits are used for access condition encoding, the last bit can be set to anything (user bit). You can find [here](http://calc.gmss.ru/Mifare1k) a simple online tool that encodes access conditions into three bits. The keys on the other hand may or may not be required to either read or write to the single blocks of a sector. You can set the access bits very individual depending on your usecase. For example, if you want to create a sector that shall be read-only with both keys at hand, your access condition would be <span style="color:#7AD109">70F87800</span>. Key A and Key B can be generated randomly. To do so, you can use a webtool such as [this one](https://www.browserling.com/tools/random-hex). Set the amount of digits to 12 and results to 2 and you will receive two random keys that you might want to apply to your tag sector. The beauty of [hexcurse](https://github.com/LonnyGomes/hexcurse) by [Lonny Gomes](https://github.com/LonnyGomes) is that you can write a plaintext in the editor on the right-hand side and it will automatically encode it on the left-hand side to hexadecimal bits. This is also very helpful vice versa, when you open a card file, you may see encoded information as plaintext. You should try this out.
@@ -215,18 +217,52 @@ Copy the blank file and make yourself a sandbox:
 		cp blank.mfd sandbox.mfd
 
 Open the copied file with hexcurse:
+<a name="openSandbox">
 
 		hexcurse -r 16 sandbox.mfd
 
-Now you can switch with <kbd>TAB</kbd> to the right side of your editor.
+</a>
+
+Now you can switch with <kbd>TAB</kbd> to the right side of your editor. With the arrow keys, navigate to line 5 (00000040) and type in "Hello World NFC!" This text is exactly 16 characters long and fits in one single data block. Now to save the file, hit <kbd>CTRL</kbd>+<kbd>X</kbd>, then <kbd>Y</kbd>, <kbd>ENTER</kbd>, and once again <kbd>CTRL</kbd>+<kbd>X</kbd>. Reopen the file with the [previous command](#openSandbox). Now to clear the row that you have written before, navigate with the arrow keys again to line 5 but this time in the left part of the editor. Place your cursor at the beginning of the line and hit <kbd>0</kbd> exactly 32 times. Save and close the file. Now you are able to read and manipulate the contents of a card file. This is not intuitive and I strongly recommend to have a look at examples from the internet and also play around in the sandbox file to get a better feeling for this extraordinary data format. You might also choose another type of editor as well if you don't like hexcurse. Now we are ready to execute our first read and write operations.
+
+### 3.4 Tag Operations
+
+#### 3.4.1 Read a Tag
+
+#### 3.4.2 Write a Tag
+
+#### 3.4.3 Format a Tag
+
+#### 3.4.4 Change Chinese Clone Tag UID
+
+#### 3.4.5 Reset A Chinese Clone Tag
 
 ## 4 Key Recovery
 
+### 4.1 Brute Force Known Keys
+
+### 4.2 Simple MFOC Attack
+
+### 4.3 Hardnested MFOC Attack
+
 ## 5 Smartphone Cards
+
+### 5.1 Card Preparation
+
+### 5.2 Smartphone App Usage
+
+### 5.3 Usage and Risks
 
 ## 6 Portability Options
 
+### 6.1 Recommended Apps
+
+### 6.2 Portable Device Setup
+
+### 6.3 Usage Examples
+
 ## 7 Conclusion
-
-## 8 Credits
-
+The presented knowledge and methods in this tutorial help to understand the general idea of how NFC tags work and how to handle them with the help of different devices. After going through all chapters, you have a fully functional DIY NFC reader/writer, an idea of how data is stored on MIFARE classic cards, how to read, write, format, and recover tags. You can do everything in this tutorial in any corner of this world (and even beyond) with the help of a portable setup. I still want to highlight some drawbacks of this tutorial. Even though all parts seem to be cheap, you still have to invest a two-digit amount of money (2024) if you don't have any of the mentioned [hardware](#2.1). The explained knowledge only helps to understand the basic principles and I do not provide extensive technical details. Although this was not the scope, I still recommend to read or watch about how NFC works on a physical level to understand the beauty behind this invention. So far, we have covered only the MIFARE classic standard which is outdated since about 2008. It is still in use, but there are more efficient and more secure NFC tags already available for not too much money. I think this tutorial is an acceptable entry point for those who want to learn about NFC tags in a practical and applicable way (e.g. kids, students, teachers, etc.), but is not sufficient to make someone a domain expert. Nevertheless, when I started working with NFC tags I was totally lost and didn't know where to start. This guide shall, in addition to provided knowledge, also save time, nerves, and hundreds of open [StackOverflow](https://stackoverflow.com/) tabs in your browser. I hope that this tutorial met your expectations and you could learn something new!
+## 8 Suggestions and Improvments
+I am always glad to receive any type of constructive criticism. Therefore, feel free to open an issue [here]() with your thoughts, comments, or questions. Please note that I don't want to expand the knowledge in this tutorial to keep things as easy as possible. However, you might see this different and if you think that something really important is missing, feel free to [fork this repository]() and expand it.<br><br>
+<p align="center"><a href="https://www.linkedin.com/in/smolinde/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white"></img></a> <a href="https://www.instagram.com/smolinde/"><img src="https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white"></img></a> <a href="https://www.duscloud.eu/sites/about/sub"><img src="https://img.shields.io/badge/Nextcloud-0082C9?style=for-the-badge&logo=Nextcloud&logoColor=white"></img></a></p>
