@@ -66,11 +66,11 @@ Type the following command in your command line and hit <kbd>ENTER</kbd>:
 
 		sudo raspi-config
 
-With arrow keys, navigate to "3 Interface Options", hit <kbd>ENTER</kbd>, navigate to "I3 SPI", and hit <kbd>ENTER</kbd> again. Select "\<Yes\>", hit <kbd>ENTER</kbd> two times. Now navigate to "6 Advanced Options", hit <kbd>ENTER</kbd>, now you should select "A1 Expand Filesystem" with <kbd>ENTER</kbd> again. Wait a little bit, hit <kbd>ENTER</kbd> after the file system was resized. Now hit the <kbd>TAB</kbd> key two times and <kbd>ENTER</kbd> to finish, save, and close Raspberry Pi configuration GUI. It will ask you whether you would like to reboot, hit <kbd>ENTER</kbd> to do so. Now wait a few moments until the Raspberry Pi reboots. Repeat the [login command](#loginCommand). Now we are going to set up the wireless hotspot that will be activated when your home network is out of reach. This will allow you to connect to the device anywhere from any device (later more). To do so, run the following command:
+With arrow keys, navigate to "3 Interface Options", hit <kbd>ENTER</kbd>, navigate to "I3 SPI", and hit <kbd>ENTER</kbd> again. Select "\<Yes\>", hit <kbd>ENTER</kbd> two times. Now navigate to "6 Advanced Options", hit <kbd>ENTER</kbd>, now you should select "A1 Expand Filesystem" with <kbd>ENTER</kbd> again. Wait a little bit, hit <kbd>ENTER</kbd> after the file system was resized. Now hit the <kbd>TAB</kbd> key two times and <kbd>ENTER</kbd> to finish, save, and close Raspberry Pi configuration GUI. It will ask you whether you would like to reboot, hit <kbd>ENTER</kbd> to do so. Now wait a few moments until the Raspberry Pi reboots. Repeat the [login command](#loginCommand). Now we are going to set up the wireless hotspot that will be activated when your home network is out of reach. This will allow you to connect to the device anywhere from any device (later more). To do so, run the following command and replace "MyNetworkName" and "MySecurePassword" with a WiFi network name and a password of your choice:
 
 		sudo nmcli dev wifi hotspot ifname wlan0 ssid "MyNetworkName" password "MySecurePassword"
 
-The shell will disconnect immediately. Go to your computers WiFi settings, find the new network, and connect with your password. After this, run the [login command](#loginCommand) in your command line again. Now you can run:
+The shell will disconnect immediately. Go to your computers WiFi settings, find the new network, and connect with the chosen password. After this, run the [login command](#loginCommand) in your command line again. Now you can run:
 
 		sudo nmcli con edit Hotspot
 
@@ -82,7 +82,7 @@ Inside of here, run the following commands:
 
 Now type and run "save", type "yes" if asked, and "quit" to leave editing window. Now run:
 
-		sudo nmcli con mod "preconfigured network (CHECK!!!)" connection.autoconnect-priority 10
+		sudo nmcli con mod "preconfigured" connection.autoconnect-priority 10
 
 This ensures that your home WiFi will be preferred and the Hotspot will be activated if and only if there is no other network in reach. You have to do this only once unless you decide to change your WiFi network properties. In that case you can always edit the existing connection (e.g. changing the password). I also recommend to hide the hotspot so that if you are using it somewhere else, people will not really see the additional existing network that is broadcasted by your Raspberry Pi. Now for key recovery we have to add a bit of RAM to our system, which is possible with [SWAP memory paging](https://en.wikipedia.org/wiki/Memory_paging). Run the following commands:
 
@@ -127,7 +127,7 @@ At the bottom of this file, paste the following two lines:
 		device.name = "PN532 Reader (SPI)"
 		device.connstring = "pn532_spi:/dev/spidev0.0:50000"
 
-Press <kbd>CTRL</kbd>+<kbd>O</kbd>, <kbd>ENTER</kbd>, and then <kbd>CTRL</kbd>+<kbd>X</kbd> to save and close the file. At this point it makes sense to check whether we can actually access and use the PN532 module. To do so, run the following command:
+Press <kbd>CTRL</kbd>+<kbd>O</kbd>, <kbd>ENTER</kbd>, and then <kbd>CTRL</kbd>+<kbd>X</kbd> to save and close the file. The previous step ensures that the [libnfc](https://nfc-tools.github.io/projects/libnfc/) tools find the SPI hardware address of the PN532 module and are able to communicate through this channel. At this point it makes sense to check whether we can actually access and use the PN532 module. To do so, run the following command:
 
 		sudo nfc-list
 
@@ -142,7 +142,7 @@ The version might be newer. If you see this output, then everything works as exp
 		autoreconf -vis
 		./configure
 		make && sudo make install
-		cd .. && rm -r mfoc-hardnested
+		cd .. && sudo rm -r mfoc-hardnested
 
 These commands will install the desired recovery tool called [mfoc-hardnested](https://github.com/nfc-tools/mfoc-hardnested). At this point it is time for a legal disclaimer:
 
@@ -151,13 +151,82 @@ These commands will install the desired recovery tool called [mfoc-hardnested](h
 
 With this being said, we can now have a deeper look into the methods of how to read, write, format, and recover MIFARE classic cards.
 
-## 3 Basic NFC Operations
+## 3 Basic NFC Knowledge
+
+### 3.1 Types of Cards
+Before we begin to explore various commands, let's have a look at what types of cards exist out there. The MIFARE classic card usually can store 1024 [bytes](https://en.wikipedia.org/wiki/Byte) of data and is therefore called 1K card. There are also cards that can store 2K or even 4K of information, but they are hardly ever used because the information stored on such cards is most of the times very compact and takes only a small percentage of the whole capacity of a 1K card. These cards are manufactured in a large variety of forms, such as classic credit card sized tags, stickers, bracelets, keyrings, wearable rings, and many more. The image below shows my collection of tags:
+<a name="cardCollection"><p align="center"><img src="./images/card_collection.jpg" width="600px"></img></p></a>
+
+A questions that begs to be answered now is how do systems distingush the cards one from another. Here is an example; Assume you have a key cards that allows you to open a [NFC drawer](https://aliexpress.com/w/wholesale-nfc-drawer-lock.html?spm=a2g0o.home.search.0) at your home. How to ensure that if you clone a card the drawer mechanism is still able to recognize that the presented key cards is a clone and not the original? The answer to this question is a bit complicated, so let me break it down into a few bullet points:
+* Each classic card has a unique manufacturer ID assigned to it
+* This ID cannot be modified
+* Additionally to the ID there is even more unchangeable data
+* This makes cards very distinguishable
+* If the ID is 4 [hex](https://en.wikipedia.org/wiki/Hexadecimal) bytes long, there are 255<sup>4</sup> = 4,288,250,625 different ID's
+* This is roughly one card per two people on this planet (2024)
+* If the ID is 7 hex bytes long, there are 255<sup>7</sup> = 70,110,209,207,109,375 different ID's
+* This is quite a lot and would really solve the uniqueness issue
+* There are so-called [Chinese clone cards](https://aliexpress.com/w/wholesale-chinese-clone-cards.html?spm=a2g0o.productlist.search.0) that allow to write any ID onto the card
+* This mechanism completely destroys the uniqueness of cards
+* This issue can be partially circumvented by readers by checking if the ID is rewritable
+* There are cards that can get any chosen ID that cannot be changed afterwards
+* The uniqueness of MIFARE cards is therefore not existing
+
+I think this is an interesting observation. It reflects the human spirit of circumventing anything that was invented for a good purpose.
+
+### 3.2 Data Storage and Structure
+To better understand what actually is inside the tag we will talk about a bunch of terms:
+* Constant and rewritable UID
+* Sector
+* Block
+* Key A and key B
+* Access bits
+* Sector trailer
+
+There are many more terms like BCC, SAK, ATQA, etc. We will only use the very basic terminology to keep things as easy as possible. Before I start to explain what each term means, let's have a look on an example of how data on a 1K chip actually looks like. To do so, go back to you Raspberry Pi, log in, and run the following command:
+
+		mkdir nfc && exit 0
+
+On your "Desktop" environment you just created a folder called "nfc". Inside of this folder you can store any NFC-related material to avoid chaos. Now donwload the two files [blank.mfd]() and [blank_iPhone.mfd]() that are provided in the folder "templates" of this repository. Inside your command line, run the following command and replace the information so that it aligns with your data paths, Raspberry Pi username, and password:
+
+		scp "Your/Path/To/blank.mfd" yourusername@yourhostname.local:/home/yourusername/nfc
+		scp "Your/Path/To/blank_iPhone.mfd" yourusername@yourhostname.local:/home/yourusername/nfc
+
+Both times you will be asked to type in your password. The [scp](https://en.wikipedia.org/wiki/Secure_copy_protocol) command allows you to transfer files from A to B securely. This is what we also have done. Now, [log in](#loginCommand) back to your Raspberry Pi, navigate inside the "nfc" folder, and open the blank dummy file:
+
+		cd nfc
+		hexcurse -r 16 blank.mfd
+
+You should see now something like this:
+<a name="hexcurseBlankCard"><p align="center"><img src="./images/hexcurse_blank_file.jpg" height="600px"></img></p></a>
+
+We use the ```-r 16``` argument to reshape the file so that exactly 16 bits per row are displayed. Explore the file with up and down arrow keys. The very first line is the block 0, the so-called manufacturer block. Here 01234567 is the 4 byte UID of the chip. That thing is sometimes 7 bytes long. It cannot be really distinguished by just looking at it. But later when reading a chip you will get the UID always displayed separately, so this is how you know then how long the UID actuall is. Further you may observe that there are tons of zeros. That is because the file is a blank card with almost no content. Why almost? Let's talk about the key blocks and what sectors are. I took an image from an amazing repository by [Pavel Zhovner](https://github.com/zhovner) - [mfread](https://github.com/zhovner/mfdread). Check it out, he has written a cool script for opening card files that also highlights keys and access bits with colors. Also the repository contains very detailed technical knowledge of the single components inside a card file.
+<a name="sampleFileColored"><p align="center"><img src="./images/sample_file_colored.png" height="600px"></img></p></a>
+
+In the image above we see that a sector contains 4 blocks. There is a total of 16 sectors (0 to 15) inside a MIFARE classic 1K card and 16 × 4 = 64 blocks (0 to 63) in total. As said previously, block 0 contains the UID and manufacturer data. On regular cards, we cannot change this block no matter what we do. However, if we take a Chinese clone card, we can rewrite the block 0 as often as we want (later more). In each fourth block we see the so-called sector trailer that contains <span style="color:#F73992">Key A</span>, <span style="color:#7AD109">Access Bits</span>, and <span style="color:#5717F7">Key B</span>. The access bits are there to tell the reader what it can or can't do with the sector. Note that only the first three hex bits are used for access condition encoding, the last bit can be set to anything (user bit). You can find [here](http://calc.gmss.ru/Mifare1k) a simple online tool that encodes access conditions into three bits. The keys on the other hand may or may not be required to either read or write to the single blocks of a sector. You can set the access bits very individual depending on your usecase. For example, if you want to create a sector that shall be read-only with both keys at hand, your access condition would be <span style="color:#7AD109">70F87800</span>. Key A and Key B can be generated randomly. To do so, you can use a webtool such as [this one](https://www.browserling.com/tools/random-hex). Set the amount of digits to 12 and results to 2 and you will receive two random keys that you might want to apply to your tag sector. The beauty of [hexcurse](https://github.com/LonnyGomes/hexcurse) by [Lonny Gomes](https://github.com/LonnyGomes) is that you can write a plaintext in the editor on the right-hand side and it will automatically encode it on the left-hand side to hexadecimal bits. This is also very helpful vice versa, when you open a card file, you may see encoded information as plaintext. You should try this out.
+
+### 3.3 Working With MFD Files
+So far, we discussed the theory and basic terminology. Now let's get practical and [log in](#loginCommand) back into the Raspberry Pi. Navigate to your NFC folder:
+
+		cd nfc
+
+Copy the blank file and make yourself a sandbox:
+
+		cp blank.mfd sandbox.mfd
+
+Open the copied file with hexcurse:
+
+		hexcurse -r 16 sandbox.mfd
+
+Now you can switch with <kbd>TAB</kbd> to the right side of your editor.
 
 ## 4 Key Recovery
 
 ## 5 Smartphone Cards
 
-## 6 Conclusion
+## 6 Portability Options
 
-## 7 Credits
+## 7 Conclusion
+
+## 8 Credits
 
