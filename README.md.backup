@@ -70,7 +70,8 @@ With arrow keys, navigate to "3 Interface Options", hit <kbd>ENTER</kbd>, naviga
 
 		sudo nmcli dev wifi hotspot ifname wlan0 ssid "MyNetworkName" password "MySecurePassword"
 
-The shell will disconnect immediately. Go to your computers WiFi settings, find the new network, and connect with your password. After this, run the [login command](#loginCommand) in your command line again. Now you can run:
+The shell will disconnect immediately. Go to your computers WiFI settings, find the new network, and connect to it with your password. After this, run the [login command]()
+Now you can run:
 
 		sudo nmcli con edit Hotspot
 
