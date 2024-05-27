@@ -3,7 +3,7 @@
 
 ## 1 Introduction
 
-NFC (Near-Field Communication) is a variety of communication protocols between two electronic devices over a short distance, usually less than 4cm.<sup>[[1]](https://en.wikipedia.org/wiki/Near-field_communication)</sup> We usually know NFC as a helpful technology when it comes to access control or contactless payment like [Google Pay](https://pay.google.com/about/) or [Apple Pay](https://www.apple.com/apple-pay/). There are a lot of different usecases where NFC is applied, and there is also a large variety of protocol standards. A very famous and wide-spread standard is the [MIFARE Classic](https://www.mifare.net/en/products/chip-card-ics/mifare-classic/). An advantage of MIFARE cards is that they are incredibly cheap and can be read by all possible devices. A drawback is that this protocol is very well examined and is no longer secure. In case you want to use NFC tags for storing confidential information, it is a very bad choice to use MIFARE tags. There are better and more secure tags available, such as [NTAG215](https://www.nxp.com/products/rfid-nfc/nfc-hf/ntag-for-tags-and-labels/ntag-213-215-216-nfc-forum-type-2-tag-compliant-ic-with-144-504-888-bytes-user-memory:NTAG213_215_216) cards. Although newer and better standards already exist, MIFARE tags are still used by a large number of companies and facilities.<br><br>
+NFC (Near-Field Communication) is a variety of communication protocols between two electronic devices over a short distance, usually less than 4cm [[source]](https://en.wikipedia.org/wiki/Near-field_communication). We usually know NFC as a helpful technology when it comes to access control or contactless payment like [Google Pay](https://pay.google.com/about/) or [Apple Pay](https://www.apple.com/apple-pay/). There are a lot of different usecases where NFC is applied, and there is also a large variety of protocol standards. A very famous and wide-spread standard is the [MIFARE Classic](https://www.mifare.net/en/products/chip-card-ics/mifare-classic/). An advantage of MIFARE cards is that they are incredibly cheap and can be read by all possible devices. A drawback is that this protocol is very well examined and is no longer secure. In case you want to use NFC tags for storing confidential information, it is a very bad choice to use MIFARE tags. There are better and more secure tags available, such as [NTAG215](https://www.nxp.com/products/rfid-nfc/nfc-hf/ntag-for-tags-and-labels/ntag-213-215-216-nfc-forum-type-2-tag-compliant-ic-with-144-504-888-bytes-user-memory:NTAG213_215_216) cards. Although newer and better standards already exist, MIFARE tags are still used by a large number of companies and facilities.<br><br>
 In this tutorial I will explain how to work practically with MIFARE cards. We will learn how to set up a DIY card reader and writer device, what MIFARE cards to use, how to manipulate contents of a card, and how to create fancy contact cards that can be read by all kinds of smartphones, including [Apple's iPhones](https://www.apple.com/iphone/).
 
 ## 2 DIY NFC Reader/Writer
@@ -93,7 +93,7 @@ This ensures that your home WiFi will be preferred and the Hotspot will be activ
 		sudo mkswap /swapfile
 		sudo swapon /swapfile
 
-Now also edit the following configurato file with:
+Now also edit the following configurato file with [nano](https://en.wikipedia.org/wiki/GNU_nano):
 
 		sudo nano /etc/fstab
 
@@ -113,14 +113,38 @@ Press <kbd>CTRL</kbd>+<kbd>O</kbd>, <kbd>ENTER</kbd>, and then <kbd>CTRL</kbd>+<
 
 		sudo reboot now
 
-Wait until the process is finished and continue with the software setup section.
+Wait until the process is finished and continue with the software setup section. Don't forget to connect your PC back to your home WiFi network.
 
 ### 2.5 Software Setup
 For now, we have successfully prepared the hardware and Raspberry Pi configurations. Now we have to install and configure software components that we will use throughout this tutorial. The following command will do most of the work:
 
-		sudo apt install screen git libnfc-dev libnfc-bin hexcurse autotools-dev autoconf libtool libusb-dev liblzma-dev ipheth-utils -y
+<a name="installEverything">
 
-After installing all new components, edit the following file with:
+		sudo apt install screen git apache2 hexcurse autotools-dev autoconf libtool libusb-dev liblzma-dev ipheth-utils -y
+
+</a>
+
+After installing all new components we will start with installation of [libnfc](https://nfc-tools.github.io/projects/libnfc/). This is an open-source library that allows us to work with NFC tags. Download the repository and go inside of the downloaded folder:
+
+		git clone https://github.com/nfc-tools/libnfc.git && cd libnfc
+
+As this is a repository with source code we have to configure, build, and install the software. To do so, run these commands one after each other:
+
+		autoreconf -vis
+		./configure --prefix=/usr --sysconfdir=/etc
+		make
+		sudo make install
+
+After installation we need to grant ourselves permissions to access the NFC drivers. We can do so by copying a file to the [udev](https://en.wikipedia.org/wiki/Udev) rules folder:
+
+		sudo cp contrib/udev/93-pn53x.rules /lib/udev/rules.d/
+
+Create a new folder called "nfc" inside the [/etc](https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard) directory and copy the sample configuration file from the repository to it:
+
+		sudo mkdir /etc/nfc
+		sudo cp libnfc.conf.sample /etc/nfc/libnfc.conf
+
+Open the copied configuration file with nano:
 
 		sudo nano /etc/nfc/libnfc.conf
 
@@ -129,24 +153,28 @@ At the bottom of this file, paste the following two lines:
 		device.name = "PN532 Reader (SPI)"
 		device.connstring = "pn532_spi:/dev/spidev0.0:50000"
 
-Press <kbd>CTRL</kbd>+<kbd>O</kbd>, <kbd>ENTER</kbd>, and then <kbd>CTRL</kbd>+<kbd>X</kbd> to save and close the file. The previous step ensures that the [libnfc](https://nfc-tools.github.io/projects/libnfc/) tools find the SPI hardware address of the PN532 module and are able to communicate through this channel. At this point it makes sense to check whether we can actually access and use the PN532 module. To do so, run the following command:
+Press <kbd>CTRL</kbd>+<kbd>O</kbd>, <kbd>ENTER</kbd>, and then <kbd>CTRL</kbd>+<kbd>X</kbd> to save and close the file. The previous step ensures that the libnfc tools find the SPI hardware address of the PN532 module and are able to communicate through this channel. At this point it makes sense to check whether we can actually access and use the PN532 module. To do so, run the following command:
 
-		sudo nfc-list
+		nfc-scan-device
 
 The output should look something like this:
 
-		nfc-list uses libnfc 1.8.0
-		NFC device: PN532 Reader (SPI) opened
+		nfc-scan-device uses libnfc libnfc-1.8.0-72-gdf0a3be
+		1 NFC device(s) found:
+		- PN532 Reader (SPI):
+    		pn532_spi:/dev/spidev0.0:50000
 
-The version might be newer. If you see this output, then everything works as expected and soon you will be able to run your very first read/write commands! If the output yields errors or something else, go through all previous steps I have described so far or open !HERE! an issue if you are really stuck. Else continue with the installation of the key recovery tool. Run the following commands:
+The version of your libnfc installation might be different. If you see this output, then everything works as expected and soon you will be able to run your very first read/write commands! If the output yields errors or something else, go through all previous steps I have described so far or open !HERE! an issue if you are really stuck. Else continue with the installation of the key recovery tool. Return to your home directory and run the following commands one after another:
 
+		cd
 		git clone https://github.com/nfc-tools/mfoc-hardnested.git && cd mfoc-hardnested
 		autoreconf -vis
 		./configure
-		make && sudo make install
-		cd .. && sudo rm -r mfoc-hardnested
+		make
+		sudo make install
+		cd
 
-These commands will install the desired recovery tool called [mfoc-hardnested](https://github.com/nfc-tools/mfoc-hardnested). At this point it is time for a legal disclaimer:
+These commands will download, build, and install the desired recovery tool called [mfoc-hardnested](https://github.com/nfc-tools/mfoc-hardnested). At this point it is time for a legal disclaimer:
 
 
 <b>THE METHODS PRESENTED BELOW ARE ONLY TO BE USED WITH OWN TAGS AND SHALL NEVER BE USED TO GAIN ILLEGAL ACCESS TO INFORMATION STORED ON TAGS THAT BELONG TO OTHERS THAN YOU. THE AUTHOR OF THIS TUTORIAL DOES NOT CARRY ANY RESPONSIBILITY IF THE BELOW LISTED METHODS ARE APPLIED IN UNLAWFUL WAYS. USE WITH CAUTION. USE AT YOUR OWN RISK AND INFORM YOURSELF ABOUT LOCAL LEGAL REGULATIONS.</b>
@@ -189,12 +217,13 @@ There are many more terms like BCC, SAK, ATQA, etc. We will only use the very ba
 
 		mkdir nfc && exit 0
 
-On your "Desktop" environment you just created a folder called "nfc". Inside of this folder you can store any NFC-related material to avoid chaos. Now donwload the two files [blank.mfd]() and [blank_iPhone.mfd]() that are provided in the folder "templates" of this repository. Inside your command line, run the following command and replace the information so that it aligns with your data paths, Raspberry Pi username, and password:
+On your "Desktop" environment you just created a folder called "nfc". Inside of this folder you can store any NFC-related material to avoid chaos. Now donwload the two files [blank.mfd]() and [blank_iPhone.mfd]() that are provided in the folder [nfc-templates]() of this repository. We will use the [scp](https://en.wikipedia.org/wiki/Secure_copy_protocol) command that allows you to transfer files from A to B securely. Inside your command line, run the following commands and replace the information so that it aligns with your data paths, Raspberry Pi username, and password:
 
 		scp "Your/Path/To/blank.mfd" yourusername@yourhostname.local:/home/yourusername/nfc
 		scp "Your/Path/To/blank_iPhone.mfd" yourusername@yourhostname.local:/home/yourusername/nfc
+		scp "Your/Path/To/sample_with_keys.mfd" yourusername@yourhostname.local:/home/yourusername/nfc
 
-Both times you will be asked to type in your password. The [scp](https://en.wikipedia.org/wiki/Secure_copy_protocol) command allows you to transfer files from A to B securely. This is what we also have done. Now, [log in](#loginCommand) back to your Raspberry Pi, navigate inside the "nfc" folder, and open the blank dummy file:
+All three times you will be asked to type in your password. This is what we also have done. Now, [log in](#loginCommand) back to your Raspberry Pi, navigate inside the "nfc" folder, and open the blank dummy file:
 
 		cd nfc
 		hexcurse -r 16 blank.mfd
@@ -202,12 +231,28 @@ Both times you will be asked to type in your password. The [scp](https://en.wiki
 You should see now something like this:
 <a name="hexcurseBlankCard"><p align="center"><img src="./images/hexcurse_blank_file.jpg" height="600px"></img></p></a>
 
-We use the ```-r 16``` argument to reshape the file so that exactly 16 bits per row are displayed. Explore the file with up and down arrow keys. The very first line is the block 0, the so-called manufacturer block. Here 01234567 is the 4 byte UID of the chip. That thing is sometimes 7 bytes long. It cannot be really distinguished by just looking at it. But later when reading a chip you will get the UID always displayed separately, so this is how you know then how long the UID actuall is. Further you may observe that there are tons of zeros. That is because the file is a blank card with almost no content. Why almost? Let's talk about the key blocks and what sectors are. I took an image from a repository by [Pavel Zhovner](https://github.com/zhovner) - [mfread](https://github.com/zhovner/mfdread). Check it out, he has written a nice script for opening card files that also highlights keys and access bits with colors. Also the repository contains very detailed technical knowledge of the single components inside a card file.
+The beauty of [hexcurse](https://github.com/LonnyGomes/hexcurse) by [Lonny Gomes](https://github.com/LonnyGomes) is that you can write a plaintext in the editor on the right-hand side and it will automatically encode it on the left-hand side to hexadecimal bits. This is also very helpful vice versa, when you open a card file, you may see encoded information as plaintext. We will try this out later. The ```-r 16``` argument reshapes the file so that exactly 16 bits per row are displayed. Explore the file with up and down arrow keys. The very first line is the block 0, the so-called manufacturer block. Here 01234567 is the 4 byte UID of the chip. That thing is sometimes 7 bytes long. It cannot be really distinguished by just looking at it. But later when reading a chip you will get the UID always displayed separately, so this is how you know then how long the UID actuall is. Further you may observe that there are tons of zeros. That is because the file is a blank card with almost no content. Why almost? Let's talk about the key blocks and what sectors are. I took an image from a repository by [Pavel Zhovner](https://github.com/zhovner) - [mfread](https://github.com/zhovner/mfdread). Check it out, he has written a nice script for opening card files that also highlights keys and access bits with colors. Also the repository contains very detailed technical knowledge of the single components inside a card file.
 <a name="sampleFileColored"><p align="center"><img src="./images/sample_file_colored.png" height="600px"></img></p></a>
 
-In the image above we see that a sector contains 4 blocks. There is a total of 16 sectors (0 to 15) inside a MIFARE classic 1K card and 16 × 4 = 64 blocks (0 to 63) in total. As said previously, block 0 contains the UID and manufacturer data. On regular cards, we cannot change this block no matter what we do. However, if we take a Chinese clone card, we can rewrite the block 0 as often as we want (later more). In each fourth block we see the so-called sector trailer that contains <span style="color:#F73992">Key A</span>, <span style="color:#7AD109">Access Bits</span>, and <span style="color:#5717F7">Key B</span>. The access bits are there to tell the reader what it can or can't do with the sector. Note that only the first three hex bits are used for access condition encoding, the last bit can be set to anything (user bit). You can find [here](http://calc.gmss.ru/Mifare1k) a simple online tool that encodes access conditions into three bits. The keys on the other hand may or may not be required to either read or write to the single blocks of a sector. You can set the access bits very individual depending on your usecase. For example, if you want to create a sector that shall be read-only with both keys at hand, your access condition would be <span style="color:#7AD109">70F87800</span>. Key A and Key B can be generated randomly. To do so, you can use a webtool such as [this one](https://www.browserling.com/tools/random-hex). Set the amount of digits to 12 and results to 2 and you will receive two random keys that you might want to apply to your tag sector. The beauty of [hexcurse](https://github.com/LonnyGomes/hexcurse) by [Lonny Gomes](https://github.com/LonnyGomes) is that you can write a plaintext in the editor on the right-hand side and it will automatically encode it on the left-hand side to hexadecimal bits. This is also very helpful vice versa, when you open a card file, you may see encoded information as plaintext. You should try this out.
+In the image above we see that a sector contains 4 blocks. There is a total of 16 sectors (0 to 15) inside a MIFARE classic 1K card and 16 × 4 = 64 blocks (0 to 63) in total. As said previously, block 0 contains the UID and manufacturer data. On regular cards, we cannot change this block no matter what we do. However, if we take a Chinese clone card, we can rewrite the block 0 as often as we want (later more). In each fourth block we see the so-called sector trailer that contains <span style="color:#F73992">Key A</span>, <span style="color:#7AD109">Access Bits</span>, and <span style="color:#5717F7">Key B</span>. The access bits are there to tell the reader what it can or can't do with the sector. Note that only the first three hex bits are used for access condition encoding, the last bit can be set to anything (user bit). The keys on the other hand may or may not be required to either read or write to the single blocks of a sector. You can set the access bits very individual depending on your usecase. For example, if you want to create a sector that shall be read-only with both keys at hand, your access condition would be <span style="color:#7AD109">70F87800</span>. Key A and Key B can be generated randomly. The calculation of access bits is described in the [NXP official documentation](https://www.nxp.com/docs/en/data-sheet/MF1S50YYX_V1.pdf). To avoid reading this document and calculating the access bits by hand we will install an access bits calculator in the next chapter.
+### 3.3 Access Bits Calculator
+Close the hexcurse editor with <kbd>CTRL</kbd>+<kbd>X</kbd>. Navigate back to your home directory and download the [MIFARE Classic 1K Access Bits Calculator](https://github.com/akafugu/MIFARE-Classic-1K-Access-Bits-Calculator) by [Akafugu Corporation](https://github.com/akafugu):
 
-### 3.3 Working With MFD Files
+		cd
+		git clone https://github.com/akafugu/MIFARE-Classic-1K-Access-Bits-Calculator.git
+
+Probably you didn't notice, but in the [previous installation command](#installEverything) I included [apache2](https://en.wikipedia.org/wiki/Apache_HTTP_Server). This is a very popular open source [web server](https://en.wikipedia.org/wiki/Web_server) that we will use to access the calculator in a browser. To make this work we don't have to do much, just rename and copy files to the web server directory ```/var/www/html```. Run the following commands to do so:
+
+		sudo cp MIFARE-Classic-1K-Access-Bits-Calculator/testPage.html /var/www/html/index.html
+		sudo cp -r MIFARE-Classic-1K-Access-Bits-Calculator/mifareWidget /var/www/html
+
+On your computer, open a browser of your choice and type the hostname of your Raspberry Pi followed by ```.local```, just like in the [login command](#loginCommand). You should see something like this:
+
+<a name="accessBitsCalculatorInBrowser"><p align="center"><img src="./images/access_bits_calculator_in_browser.png" width="600px"></img></p></a>
+
+If you change the position of the blue radio buttons, the access bits at the top are getting adjusted. This calculator will save you a lot of time and nerves when trying to figure out how to set the access bits properly.
+
+### 3.4 Working With MFD Files
 So far, we discussed the theory and basic terminology. Now let's get practical and [log in](#loginCommand) back into the Raspberry Pi. Navigate to your NFC folder:
 
 		cd nfc
@@ -225,17 +270,120 @@ Open the copied file with hexcurse:
 
 Now you can switch with <kbd>TAB</kbd> to the right side of your editor. With the arrow keys, navigate to line 5 (00000040) and type in "Hello World NFC!" This text is exactly 16 characters long and fits in one single data block. Now to save the file, hit <kbd>CTRL</kbd>+<kbd>X</kbd>, then <kbd>Y</kbd>, <kbd>ENTER</kbd>, and once again <kbd>CTRL</kbd>+<kbd>X</kbd>. Reopen the file with the [previous command](#openSandbox). Now to clear the row that you have written before, navigate with the arrow keys again to line 5 but this time in the left part of the editor. Place your cursor at the beginning of the line and hit <kbd>0</kbd> exactly 32 times. Save and close the file. Now you are able to read and manipulate the contents of a card file. This is not intuitive and I strongly recommend to have a look at examples from the internet and also play around in the sandbox file to get a better feeling for this extraordinary data format. You might also choose another type of editor as well if you don't like hexcurse. Now we are ready to execute our first read and write operations.
 
-### 3.4 Tag Operations
+### 3.5 Tag Operations
+Before running the actual manipulation commands explained in the next few chapters I want you to have a look on the help section of each of them. To do so, first run the following command:
 
-#### 3.4.1 Read a Tag
+<a name="helpSectionClassic">
 
-#### 3.4.2 Write a Tag
+		nfc-mfclassic -h
 
-#### 3.4.3 Format a Tag
+</a>
 
-#### 3.4.4 Change Chinese Clone Tag UID
+The output shows you what commands are available. From my point of view, the descriptions are not very intuitive and I will therefore describe in own words how exactly to use these commands later. Now run:
 
-#### 3.4.5 Reset A Chinese Clone Tag
+		nfc-mfsetuid -h
+
+The output is significantly shorter than the output of the previous command. Read everything carefully, and don't worry if you don't understand everything at first sight. Note that the previous command output has this line at the end:
+
+```*** Note: this utility only works with special Mifare 1K cards (Chinese clones).```<br>
+
+Again, changing the UID of a card is only possible with the Chinese clones. Also double-check the version when ordering! You need the first version, because the second version of Chinese clones can only be changed with Android smartphones.
+
+#### 3.5.1 Read a Tag
+Now grab any tag of your choice. I recommend to use a Chinese clone as there is always the option to do a factory reset with those tags. If you run a faulty command on a common tag it might become corrupted and unusable. Don't waste your tags. Place the tag right beneath the PN532 module. It doesn't matter under which angle you place your tag as the reader has approximately 4cm oprating distance. Make sure you are in the "nfc" directory and run the following command:
+<a name="readCommand">
+
+		nfc-mfclassic r a u firstRead.mfd
+
+</a>
+
+Let the command read out the tag, it takes a few seconds. Now run:
+
+		hexcurse -r 16 firstRead.mfd
+
+Now you are able to see the contents of the tag. It should be empty. You can close this file with <kbd>CTRL</kbd> + <kbd>X</kbd>. The read command expects some arguments. In our example, the "r" stands for read, "a" stands for usage of Key A to read, and u for any UID that is detected. Probably you noticed that there is an option of using the arguments as uppercase letters. If we would use "R", this would mean unlocked reading and works only with Chinese clones. In other words, using "R" means bypassing key A and/or B authentication. Using an "A" means reading out tag and not terminating operation when an error occurs. This might be useful if you have a card with a few corrupt sectors but you surely still want to read out the rest, so this is the option to go with. The argument "U" can be only used in addition with a 4 byte long UID that you provide. This is useful in very rare cases, e.g. when you have a bunch of inseparable tags and you want to address a specific one. If the lowercase "u" is provided, the tool selects the tag with lowest UID, e.g. 01234567 over 123456789 [[source]](https://manpages.debian.org/unstable/libnfc-bin/nfc-mfclassic.1.en.html). Additionally, you may have a tag that is encrypted with certain keys. In this case you would not only tell the tool how to name the output file but also provide a tag file that contains the keys. An additional argument "f" at the end may be applied if the UID of the tag file with the desired keys differs from the card that has to be read out. We will come to that in the next chapter. Now you can also try out different variations of the [read command](#readCommand):
+
+		nfc-mfclassic r b u firstRead.mfd
+		nfc-mfclassic r A u firstRead.mfd
+
+Try out different combinations. A read command cannot harm your tag anyway. You can also delete the file that was created previously with:
+
+		rm firstRead.mfd
+
+In the next chapter I will introduce the write command. We will need the read command to check whether our write operation actually did what we intended.
+#### 3.5.2 Write a Tag
+Now to make things a little bit more interesting, let's pretend that you want to store your [private key](https://en.bitcoin.it/wiki/Private_key) of your [cryptocurrency](https://en.wikipedia.org/wiki/Cryptocurrency) wallet on a tag of your choice. For the next steps I recommend to use a Chinese clone tag. Investigate the file ```sample_with_keys.mfd```:
+
+		hexcurse -r 16 sample_with_keys.mfd
+
+In lines 5 to 7 you will find a readable text on the right-hand side of your screen. If you investigate the sector trailers you will see in every line the exact same <span style="color:#F73992">Key A (1DB6261B7C)</span>, <span style="color:#7AD109">Access Bits (7F0788)</span></span>, and <span style="color:#5717F7">Key B (D43648824A42)</span>. The keys are chosen random, the access bits are set so that you can read and write everything as long as you actually have the keys. You can double-check in the [calculator](#accessBitsCalculatorInBrowser) we installed previously. Close the file with <kbd>CTRL</kbd>+<kbd>X</kbd>. We will now attempt to write this file on our blank tag. To do so, run the following command:
+
+		nfc-mfclassic w a u sample_with_keys.mfd
+
+The last line of the output should be the following:
+
+		Done, 63 of 64 blocks written.
+
+Don't worry, the skipped block was the manufacturer block. On Chinese clones you can also overwrite it by passing the capital "W". Let's try out:
+
+		nfc-mfclassic W a u sample_with_keys.mfd
+
+Now the output should look like this:
+
+		Done, 64 of 64 blocks written.
+
+In theory, we just wrote the whole contents of the ```sample_with_keys.mfd``` file to the card. Now let's double-check if we actually did so by reading out the card:
+
+		nfc-mfclassic r a u doubleCheck.mfd
+
+The command did not create any output file and the last line tells us why:
+
+		Error: authentication failed for block 0x3f
+
+This is because we tried to read out the tag with default keys, but we have totally random ones on our tag. To read or write a tag with specific keys you must provide a tag file that contains those. In our case we can just pass the ```sample_with_keys.mfd``` file as the keyfile argument and try the read command again:
+
+		nfc-mfclassic r a u doubleCheck.mfd sample_with_keys.mfd
+
+Now the last line of the output should look like this:
+
+		Writing data to file: doubleCheck.mfd ...Done.
+
+Open the created file with hexcurse:
+
+		hexcurse -r 16 doubleCheck.mfd
+
+You should see the exact same values as in the ```sample_with_keys.mfd``` file. Close the file with <kbd>CTRL</kbd>+<kbd>X</kbd>. To validate that the source and target files are actually identical, run the following command:
+
+		sdiff doubleCheck.mfd sample_with_keys.mfd
+
+If you don't get any output it means that the files have identical content. When reading out Chinese clone tags you must not provide a keyfile. Run the following commands one after another:
+
+		nfc-mfclassic R a u doubleCheck.mfd
+		sdiff doubleCheck.mfd sample_with_keys.mfd
+
+The read operation was successful, ```doubleCheck.mfd``` was overwritten, and again the source and target files are identical. After we rushed through read and write commands, you are probably a little bit overwhelmed. The best thing that you can do is to try out the read and write commands with different combinations. Keep using Chinese clones! If something goes wrong and you end up with a corrupt tag that cannot be read or written, we will fix that in [3.5.5](#355-reset-a-chinese-clone-tag).
+#### 3.5.3 Format a Tag
+If you now want to erase all contents of your current tag, you can use the format command. The help section that we saw [here](#helpSectionClassic) suggests to run the format command twice, with key A and B. To do so, run the following commands:
+
+		nfc-mfclassic f A u blank.mfd sample_with_keys.mfd f
+		nfc-mfclassic f B u blank.mfd sample_with_keys.mfd f
+
+You might observed that while running the first command with key A the format tool was unable to overwrite sector trailers. This is due to the access bits that I have set in the tag file. They allow to change the sector trailers with key B only. The second command was able to wipe everything except the manufacturer block. Let's check if the card is actually blank again:
+
+		nfc-mfclassic r a u doubleCheck.mfd
+
+Now open the file with hexcurse:
+
+		hexcurse -r 16 doubleCheck.mfd
+
+The card is empty and can be set to anything again. Remove files that we do longer need:
+
+		rm doubleCheck.mfd sandbox.mfd
+
+Proceed with the next chapter where we will have a closer look at the manufacturer block.
+#### 3.5.4 Change Chinese Clone Tag UID
+
+#### 3.5.5 Reset A Chinese Clone Tag
 
 ## 4 Key Recovery
 
@@ -262,7 +410,7 @@ Now you can switch with <kbd>TAB</kbd> to the right side of your editor. With th
 ### 6.3 Usage Examples
 
 ## 7 Conclusion
-The presented knowledge and methods in this tutorial help to understand the general idea of how NFC tags work and how to handle them with the help of different devices. After going through all chapters, you have a fully functional DIY NFC reader/writer, an idea of how data is stored on MIFARE classic cards, how to read, write, format, and recover tags. You can do everything in this tutorial in any corner of this world (and even beyond) with the help of a portable setup. I still want to highlight some drawbacks of this tutorial. Even though all parts seem to be cheap, you still have to invest a two-digit amount of money (2024) if you don't have any of the mentioned [hardware](#2.1). The explained knowledge only helps to understand the basic principles and I do not provide extensive technical details. Although this was not the scope, I still recommend to read or watch about how NFC works on a physical level to understand the beauty behind this invention. So far, we have covered only the MIFARE classic standard which is outdated since about 2008. It is still in use, but there are more efficient and more secure NFC tags already available for not too much money. I think this tutorial is an acceptable entry point for those who want to learn about NFC tags in a practical and applicable way (e.g. kids, students, teachers, etc.), but is not sufficient to make someone a domain expert. Nevertheless, when I started working with NFC tags I was totally lost and didn't know where to start. This guide shall, in addition to provided knowledge, also save time, nerves, and hundreds of open [StackOverflow](https://stackoverflow.com/) tabs in your browser. I hope that this tutorial met your expectations and you could learn something new!
+The presented knowledge and methods in this tutorial help to understand the general idea of how NFC tags work and how to handle them with the help of different devices. After going through all chapters, you have a fully functional DIY NFC reader/writer, an idea of how data is stored on MIFARE classic cards, how to read, write, format, and recover tags. You can do everything in this tutorial in any corner of this world (and even beyond) with the help of a portable setup. I still want to highlight some drawbacks of this tutorial. Even though all parts seem to be cheap, you still have to invest a two-digit amount of money (2024) if you don't have any of the mentioned [hardware](#21-required-hardware-and-materials). The explained knowledge only helps to understand the basic principles and I do not provide extensive technical details. Although this was not the scope, I still recommend to read or watch about how NFC works on a physical level to understand the beauty behind this invention. So far, we have covered only the MIFARE classic standard which is outdated since about 2008. It is still in use, but there are more efficient and more secure NFC tags already available for not too much money. I think this tutorial is an acceptable entry point for those who want to learn about NFC tags in a practical and applicable way (e.g. kids, students, teachers, etc.), but is not sufficient to make someone a domain expert. Nevertheless, when I started working with NFC tags I was totally lost and didn't know where to start. This guide shall, in addition to provided knowledge, also save time, nerves, and hundreds of open [StackOverflow](https://stackoverflow.com/) tabs in your browser. I hope that this tutorial has met your expectations and you could learn something new!
 ## 8 Suggestions and Improvments
 I am always glad to receive any type of constructive criticism. Therefore, feel free to open an issue [here]() with your thoughts, comments, or questions. Please note that I don't want to expand the knowledge in this tutorial to keep things as easy as possible. However, you might see this different and if you think that something really important is missing, feel free to [fork this repository]() and expand it.<br><br>
 <p align="center"><a href="https://www.linkedin.com/in/smolinde/"><img src="https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white"></img></a> <a href="https://www.instagram.com/smolinde/"><img src="https://img.shields.io/badge/Instagram-E4405F?style=for-the-badge&logo=instagram&logoColor=white"></img></a> <a href="https://www.duscloud.eu/sites/about/sub"><img src="https://img.shields.io/badge/Nextcloud-0082C9?style=for-the-badge&logo=Nextcloud&logoColor=white"></img></a></p>
