@@ -192,9 +192,9 @@ A questions that begs to be answered now is how do systems distingush the cards 
 * This ID cannot be modified
 * Additionally to the ID there is even more unchangeable data
 * This makes cards very distinguishable
-* If the ID is 4 [hex](https://en.wikipedia.org/wiki/Hexadecimal) bytes long, there are 255<sup>4</sup> = 4,288,250,625 different ID's
+* If the ID is 4 [hex](https://en.wikipedia.org/wiki/Hexadecimal) bytes long, there are 256<sup>4</sup> = 4,294,967,296 different ID's
 * This is roughly one card per two people on this planet (2024)
-* If the ID is 7 hex bytes long, there are 255<sup>7</sup> = 70,110,209,207,109,375 different ID's
+* If the ID is 7 hex bytes long, there are 256<sup>7</sup> = 72,057,594,037,927,936 different ID's
 * This is quite a lot and would really solve the uniqueness issue
 * There are so-called [Chinese clone cards](https://aliexpress.com/w/wholesale-chinese-clone-cards.html?spm=a2g0o.productlist.search.0) that allow to write any ID onto the card
 * This mechanism completely destroys the uniqueness of cards
@@ -382,16 +382,94 @@ The card is empty and can be set to anything again. Remove files that we do long
 
 Proceed with the next chapter where we will have a closer look at the manufacturer block.
 #### 3.5.4 Change Chinese Clone Tag UID
+Let us recall the example with a NFC drawer mechanism from [3.1](#31-types-of-cards). Assume that you want to create a second key tag for your familiy member, friend, partnerm or whoever. You also know that the reader ignores contents of the key tag and only reads the manufacturer block. If the UID matches the expectations, the drawer opens. You also have read out your key tag previously and know that the UID is "8302C5CD". What we will do now is overwriting the default UID (01234567) with the UID that the drawer expects. To do so, place your Chinese clone tag under the PN532 module and run the following command:
 
+		nfc-mfsetuid 8302C5CD
+
+If you don't want your console to be flooded with detailed outputs of the command you may append the ```-q``` argument to make the output less verbose. Now to verify that the tag has actually the desired UID, run the following command:
+
+		nfc-list
+
+This command checks for the presence of a tag and also prints out the tag UID. Your output should look something like this:
+
+		1 ISO14443A passive target(s) found:
+		ISO/IEC 14443A (106 kbps) target:
+    		ATQA (SENS_RES): 00  04
+       		   UID (NFCID1): 83  02  c5  cd
+      		  SAK (SEL_RES): 08
+
+Now you can clearly see the new UID that we assigned previously. There is also the option to write the whole manufacturer block (16 bytes) with this command. To do so, I would usually let you read out the tag, copy the first line from hexcurse, but to save time I just provide you the manufacturer block in the next command:
+
+		nfc-mfsetuid 8302C5CD890804004659255849102302 -q
+
+This might be useful in cases where you want to create an actual identical copy of a tag. The easier way to do so is just to apply unlocked writing that I have shown in [3.5.2](#352-write-a-tag).
 #### 3.5.5 Reset A Chinese Clone Tag
+Now while playing around and experimenting with a tag it might happen that you accidentally write nonsense to a sector trailer and your tag becomes corrupt. There is only one questio to be asked: Is the corrupted tag a Chinese clone? If the answer is no, throw the tag away and forget about its existance. If the answer is yes, proceed. Place your desperately ill tag under the PN532 module and run the following command:
 
+		nfc-mfsetuid -f -q
+
+Within just a few seconds your tag should be as good as new. Be aware that this command also wipes everything that was previously written to it! There is no chance to recover the data but at least you are now left with a healthy tag. Now if you want to recover data but you have lost your key A and B, chances are very high that the next section of this tutorial will help you.
 ## 4 Key Recovery
+For this section we will use the scenario from [3.5.2](#352-write-a-tag) and thus the same file called file ```sample_with_keys.mfd```. This time, take any tag of your choice and place it under the PN532 module. Write the file to the tag with the following command:
 
-### 4.1 Brute Force Known Keys
+		nfc-mfclassic w a u sample_with_keys.mfd
 
-### 4.2 Simple MFOC Attack
+Now let's pretend that you have accidentally deleted the file ```sample_with_keys.mfd```:
 
-### 4.3 Hardnested MFOC Attack
+		rm sample_with_keys.mfd
+
+You remember only that you have used random keys for each and every sector. Your private key is the only access to your cryptocurrency wallet. Without further thoughts you try to run the mfoc-hardnested command that tries to reverse engineer key A and B of a MIFARE classic tag:
+
+		mfoc-hardnested -O card_recovery.mfd
+
+The utility first tries all standard keys and yields the following output:
+
+		mfoc-hardnested: ERROR:
+		No sector encrypted with the default key has been found, exiting..
+
+At this point you might think that you've lost all of your crypto savings. But the truth is that it is still too early to give up. Proceed with the next chapter.
+### 4.1 Brute Force and MFOC Attack
+In a lot of cases a so-called [brute-force attack](https://en.wikipedia.org/wiki/Brute-force_attack) might help. It is basically trying out all possible combinations until you get the exact one that you need. In our particular case it could take several hundred years for just one single key as there are<br> 256<sup>6</sup> = 281,474,976,710,656 different combinations possible. To avoid this problem, there is a [extended standard key file](https://github.com/ikarus23/MifareClassicTool/blob/master/Mifare%20Classic%20Tool/app/src/main/assets/key-files/extended-std.keys) in the [MifareClassicTool](https://github.com/ikarus23/MifareClassicTool/tree/master) repository by [Gerhard Klostermeier](https://github.com/ikarus23). It is a Windows and Android app that allows to read and write tags. We will need the extended keys on our device. Therefore, inside your "nfc" folder, run the following command.
+
+		wget https://raw.githubusercontent.com/ikarus23/MifareClassicTool/master/Mifare%20Classic%20Tool/app/src/main/assets/key-files/extended-std.keys
+
+We successfully downloaded the file. It contains 1781 keys that were discovered on various different cards from all over the world. Now if we plug this file into the mfoc-hardnested command the tool will start to try out all 1781 keys on all blocks of the card. This might take a while. To be able to close the SSH connection we will use a tool called [screen](https://wiki.debian.org/screen). It is a tool that creates a reconnectable session inside your Raspberry Pi that persists even after logout. To initialize it, simply run:
+
+		screen
+
+You will get a propmt with credits about the tool. Hit <kbd>ENTER</kbd>. Now, inside your screen session, run:
+
+		mfoc-hardnested -O card_recovery.mfd -f extended-std.keys
+
+This will take some time. Close the screen session with <kbd>CTRL</kbd>+<kbd>A</kbd> and then press <kbd>D</kbd>. You will get an output that looks something like this:
+
+		[detached from 985.pts-0.nfctutorial]
+
+Remember the number that comes before ```.pts[...]```. To reattach to the session, run the following command, but use your number:
+
+		screen -r 985
+
+You should still see the tool running the key brute-force. This will take <b>about 2 hours</b>. Continue with [section 5](#5-smartphone-cards) and return back to this point when the script has terminated. Note that it is crucial to not move the tag as all of the progress will be lost if the reader cannot find the tag any longer!<br>
+After termination of the recovery utility you are left with a fully restored file, but how is that possible? The explanation for this lies in the fact that I used for the last sector a different key B. And this key was identical to one of the last keys in the collection of keys. Here is the interesting output part:
+
+
+		[Key: b1c4a8f7f6e3] -> [................]
+		[Key: 001122334455] -> [................]
+		[Key: 6ca761ab6ca7] -> [...............\]
+		[Key: ffffffffffff] -> [...............\]
+
+This particular output tells us that "6CA761AB6CA7" is key B for sector 15. With this discovery we are now able to exploit sector 15. If you want to see in detail how this happens, run the following command:
+
+		mfoc-hardnested -O card_recovery.mfd -k 6CA761AB6CA7
+
+In this command we additionally provide a custom key. When running the mfoc attack, the utility finds key A (1DB6261B7C1C) first, then key B (D43648824A42). Check the output file with hexcurse:
+
+		hexcurse -r 16 card_recovery.mfd
+
+As you can see, the content is identical to the previously lost source file. We can rename the file back to its original name:
+
+		mv 
+### 4.2 Hardnested MFOC Attack
 
 ## 5 Smartphone Cards
 
