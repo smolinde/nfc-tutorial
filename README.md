@@ -11,7 +11,7 @@ In this tutorial I will explain how to work practically with MIFARE cards. We wi
 Let us start with some important physical requirements. Here is a list of hardware that we will use in this tutorial:
  * A Raspberry Pi Zero 2W with case and GPIO pins soldered
  * A case for your Raspberry Pi
- * A smartphone of your choice with mobile internet access
+ * An iPhone with mobile internet access and NFC capability (iPhone 6 and newer)
  * A computer/laptop of your choice
  * A 32GB nano SD card with suitable adapter for your computer
  * A power adapter with micro-USB (male)
@@ -19,7 +19,7 @@ Let us start with some important physical requirements. Here is a list of hardwa
  * Six female-to-female jumper wires (>10cm recommended)
  * A paper clip
  * A USB-A (female) to micro-USB (male) adapter
- * A smartphone wire that has a USB-A (male) connector
+ * An iPhone wire that has a USB-A (male) connector
  * A powerbank (5V~1,2A with 10,000mAh recommended)
  * A wire with micro-USB (male) and an end that fits your powerbank
  * A wireless home network (2.4GHz)
@@ -176,8 +176,10 @@ The version of your libnfc installation might be different. If you see this outp
 
 These commands will download, build, and install the desired recovery tool called [mfoc-hardnested](https://github.com/nfc-tools/mfoc-hardnested). At this point it is time for a legal disclaimer:
 
+<a name="legalDisclaimer"></a>
 
 <b>THE METHODS PRESENTED BELOW ARE ONLY TO BE USED WITH OWN TAGS AND SHALL NEVER BE USED TO GAIN ILLEGAL ACCESS TO INFORMATION STORED ON TAGS THAT BELONG TO OTHERS THAN YOU. THE AUTHOR OF THIS TUTORIAL DOES NOT CARRY ANY RESPONSIBILITY IF THE BELOW LISTED METHODS ARE APPLIED IN UNLAWFUL WAYS. USE WITH CAUTION. USE AT YOUR OWN RISK AND INFORM YOURSELF ABOUT LOCAL LEGAL REGULATIONS.</b>
+
 
 With this being said, we can now have a deeper look into the methods of how to read, write, format, and recover MIFARE classic cards.
 
@@ -449,8 +451,11 @@ Remember the number that comes before ```.pts[...]```. To reattach to the sessio
 
 		screen -r 985
 
-You should still see the tool running the key brute-force. This will take <b>about 2 hours</b>. Continue with [section 5](#5-smartphone-cards) and return back to this point when the script has terminated. Note that it is crucial to not move the tag as all of the progress will be lost if the reader cannot find the tag any longer!<br>
-After termination of the recovery utility you are left with a fully restored file, but how is that possible? The explanation for this lies in the fact that I used for the last sector a different key B. And this key was identical to one of the last keys in the collection of keys. Here is the interesting output part:
+You should still see the tool running the key brute-force. This will take <b>about 2 hours</b>. Note that it is crucial to not move the tag as all of the progress will be lost if the reader cannot find the tag any longer! Detach from your screen session and logoff from your SSH shell with the following command:
+
+		exit
+
+Don't continue reading and return back to this point when the script has terminated.<br><br>Reconnect to your SSH shell and reattach the screen session. After termination of the recovery utility you are left with a fully restored file, but how is that possible? The explanation for this lies in the fact that I used for the last sector a different key B. You probably didn't notice the different key when exploring the file in [3.5.2](#352-write-a-tag). And this key was identical to one of the last keys in the collection of keys that we downloaded to our Raspberry Pi. Here is the interesting output part:
 
 
 		[Key: b1c4a8f7f6e3] -> [................]
@@ -469,16 +474,59 @@ In this command we additionally provide a custom key. When running the mfoc atta
 As you can see, the content is identical to the previously lost source file. We can rename the file back to its original name:
 
 		mv card_recovery.mfd sample_with_keys.mfd
+
+The simple attack might not be sufficient for all cases. There is a much more powerful tool that we will talk about in the next chapter.
 ### 4.2 Hardnested MFOC Attack
+Although the simple attack was able to recover both keys I suggest to try out the hardnested attack which is more complex and time-consuming. Connect to your SSH shell, and reattach to the screen session if you left it in the meanwhile. Navigate to your "nfc" folder and run the following command:
 
+		mfoc-hardnested -O test.mfd -k 6CA761AB6CA7 -F
+
+The ```-F``` argument forces the tool to skip the simple attack and apply the harndested attack immediately. If you leave this argument out and the simple attack fails, the tool will automatically run the hardnested attack. After a while you should see a table that looks something like this:
+
+		time    | trg | #nonces | Activity                                                | expected to brute force
+         		|     |         |                                                         | #states         | time
+           -------------------------------------------------------------------------------------------------------------
+		      0 |  0A |       0 | Start using 4 threads                                   |                 |
+	 	      0 |  0A |       0 | Brute force benchmark: 14 million (2^23.8) keys/s       | 140737488355328 |  113d
+	 	     27 |  0A |       0 | Using 235 precalculated bitflip state tables            | 140737488355328 |  113d
+	 	    324 |  0A |     106 | Apply bit flip properties                               |   2081242742784 |    2d
+
+Don't get fooled by the time estimations, the whole process may take <b>up to 20 hours!</b> There is no need in running this tool as we know that the previous method can recover both keys in a very short time. You can stop the process (or any process in Linux) with <kbd>CTRL</kbd>+<kbd>C</kbd>. Terminate the screen session with the following command:
+ 
+		exit
+
+Let's summarize what we have learned:
+* It is a good idea to start a brute-force attack with known keys
+* A simple attack is most of the times sufficient to recover all keys
+* A harndested attack will probably always work but consumes a lot of time
+* An attack is only possible if at least one key of any sector is known
+
+Reminder: <b>Read the [legal disclaimer](#legalDisclaimer)!</b><br>
+At this point you have obtained knowledge that helps you to understand and to work with MIFARE classic cards. This might be interesting but not really applicable in everyday life. To compensate this I prepared a whole chapter dedicated to tags that can be read by smartphones of any kind that support NFC reading.
 ## 5 Smartphone Cards
+First thing that I want to do is to spread awareness that you shall never trust anything on the internet, perhaps not even this tutorial, question it! I asked [OpenAI's](https://openai.com/) [LLM](https://en.wikipedia.org/wiki/Large_language_model) [ChatGPT](https://chatgpt.com/) whether iPhones can read out MIFARE classic cards. You can find the detailed question and answer [here](https://chatgpt.com/share/59acec35-35fa-4627-a51c-9491d40825a5). Here is another source telling us that we cannot do this: [Blog-like article on GitHub Gist](https://gist.github.com/equipter/88d7a681bd78d45622959861cfcecf2a). No matter what you might think now, together we will proof everyone wrong. Excited? Proceed.
+### 5.1 Required App
+Apparently, blank MIFARE tags indeed are invisible to iPhones but work well with Android devices. We fill fix that. If you don't have an iPhone, this chapter is useless for you as its main focus lies on iPhone usage. See also [2.1](#21-required-hardware-and-materials). To read and write NFC tags with your iPhone we will use the [NFC Tools](https://apps.apple.com/us/app/nfc-tools/id1252962749) by [wakdev](https://www.wakdev.com/en/). Please make sure that you purchase the Pro Edition (in-app purchase) for 2,29 EUR (April 2020). With this app installed, open the app, tap the settings wheel in the upper left corner, and select "Compatibility" mode. Return to main page, and try to read an empty Chinese clone tag. Your NFC antenna is located at the top of your iPhone. It should not work. We will fix that in the next chapter.
+### 5.2 Card Preparation
+Again, connect to your Raspberry Pi with the [login command](#loginCommand) and navigate to your "nfc" folder. Now it is very important to mention that the upcoming write operation will change a standard MIFARE tag <b>forever</b> to an iPhone readable tag as we are going to set the access bits so that they cannot be changed after being written once! I recommend to use a Chinese clone tag so that you always can reset the tag to its original form. Place the tag under the PN532 module and run the following command:
 
-### 5.1 Card Preparation
+		nfc-mfclassic w a u blank_iPhone.mfd
 
-### 5.2 Smartphone App Usage
+If you are wondering how the written file looks like, open and investiagte it with hexcurse:
 
-### 5.3 Usage and Risks
+		hexcurse -r 16 blank_iPhone.mfd
 
+After inspecting the contents, close the editor with <kbd>CTRL</kbd>+<kbd>X</kbd>. Due to lack of information I cannot explain why exactly this file works with iPhones. It just does. Open the NFC Tools app on your iPhone and try to read the tag once again. It should work and the app will display something like this:
+<a name="screenshotSuccessfulRead"><p align="center"><img src="./images/screenshot_nfc_tools_successful_read.png" height="500px"></img></p></a>
+
+Despite the common agreement on the internet that classic MIFARE cards are not readable by iPhones, we proved this to be wrong. In the next chapter we will use this to create a tag that can be read by any smartphone that supports NFC technology.
+### 5.3 App Usage
+In the NFC Tools app you may now tap the "Write" section. Here you have to tap "Add a record". Select anything you like from the list. I recommend trying "Social networks". Select a social network of your choice (e.g. Facebook, Instagram, GitHub, etc.), enter your username, and tap "OK". You are redirected back to the writing section. Now tap the "Write/XY Bytes" option. Approach your tag with your phone and write the data to your tag. Close the NFC Tools app and swipe it away from the opened apps. Now when you are in your home app view, approach the tag with your iPhone. Make sure you have turned on your notifications and you should see something like this appearing at the top of your screen:
+<a name="screenshotTagRecognized"><p align="center"><img src="./images/screenshot_nfc_tag_recognized.png" width="400px"></img></p></a>
+
+In my case I made a tag with my Instagram account (which you can find at the bottom of this tutorial). If you want to erase the content of your tag, open the NFC Tools app, tap "Other", tap "Erase tag", and approach your tag. If you then read the tag, you should get the same output as in [this screenshot](#screenshotSuccessfulRead). Try out the different features of the app. At this point you have learned everything about <i>how</i> to work with NFC tags. What is left to learn is <i>when not</i> and <i>where</i> to work with NFC tags. This is covered in the remaining chapter and [section 6](#6-portability-option). Proceed reading.
+### 5.4 Potential Risks
+Although this chapter may sound a little boring, I still want to highlight a few potentials risks when it comes to NFC tags. First things first, <b>never store confidential data on a MIFARE tag!</b> Always remember what I have shown in [section 4](#4-key-recovery). If your tag that contains sensitive data somehow ends up being lost or stolen, your data is basically breached. Try to avoid writing such data that you would not want to share with strangers (e.g. passwords, private keys, bank account details etc.). If you recall the example usecase from [3.5.2](#352-write-a-tag), this would be a very bad idea in real life, don't do that. It is also important to mention that tags might be read by people that don't have your consent to do so. An example could be that you carry a NFC tag with your private phone number in your pocket and someone holds a phone against your pocket and reads out the tag without you even noticing it. This scenario is unlikely to happen but to be safe from data theft I heavily recommend to carry tags in a wallet with NFC protection. Almost any modern wallet has this as you already carry at least 2-3 NFC tags in form of your credit card, your passport, health insurance card, or anything you can imagine. Of course credit cards use standards of NFC chips that cannot be read easily by everyone, but remember the human spirit, and a wallet that simply blocks the corresponding electromagnetic waves is a very robust and effective solution against NFC data theft. Also note that, according to the discussion in [3.1](#31-types-of-cards), <b>you can never rely on the uniqueness of a tag!</b> Oftentimes tags can be cloned easily, so make sure to double-check tags (such as access or balance cards) on their genuitiy. Do this with simple visual checks and what is actually printed or (hand)written on a tag. Another important point is that whenever you find a lost NFC tag, <b>don't try to access its contents!</b> Either bring it back to the owner if information on the tag itself is printed or dispose it properly. Stay legal! Don't break laws. You are now aware of some potential risks, do's, and dont's. The only thing left to do is to provide you another degree of freedom and that is the possibility to do all of the contents presented here anywhere you want. You will be no longer binded to your home WiFi and computer. Continue reading.
 ## 6 Portability Options
 
 ### 6.1 Recommended Apps
