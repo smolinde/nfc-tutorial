@@ -221,17 +221,16 @@ To better understand what actually is inside the tag we will talk about a bunch 
 
 There are many more terms like BCC, SAK, ATQA, etc. We will only use the very basic terminology to keep things as easy as possible. Before I start to explain what each term means, let's have a look on an example of how data on a 1K chip actually looks like. To do so, go back to you Raspberry Pi, log in, and run the following command:
 
-		mkdir nfc && exit 0
+		mkdir nfc && cd nfc
 
-On your "Desktop" environment you just created a folder called "nfc". Inside of this folder you can store any NFC-related material to avoid chaos. Now donwload the two files [blank.mfd]() and [blank_iPhone.mfd]() that are provided in the folder [nfc-templates]() of this repository. We will use the [scp](https://en.wikipedia.org/wiki/Secure_copy_protocol) command that allows you to transfer files from A to B securely. Inside your command line, run the following commands and replace the information so that it aligns with your data paths, Raspberry Pi username, and password:
+In your "Desktop" environment you just created and navigated to a folder called "nfc". Inside of this folder you can store any NFC-related material to avoid chaos. Now download the three files [blank.mfd](https://github.com/smolinde/nfc-tutorial/blob/master/nfc-templates/blank.mfd), [blank_iPhone.mfd](https://github.com/smolinde/nfc-tutorial/blob/master/nfc-templates/blank_iPhone.mfd), and [sample_with_keys.mfd](https://github.com/smolinde/nfc-tutorial/blob/master/nfc-templates/sample_with_keys.mfd) that are provided in the folder [nfc-templates](https://github.com/smolinde/nfc-tutorial/tree/master/nfc-templates) of this repository. We will use the [wget](https://en.wikipedia.org/wiki/Wget) command that allows you to download files from the internet. In your SSH session, run the following three commands:
 
-		scp "Your/Path/To/blank.mfd" yourusername@yourhostname.local:/home/yourusername/nfc
-		scp "Your/Path/To/blank_iPhone.mfd" yourusername@yourhostname.local:/home/yourusername/nfc
-		scp "Your/Path/To/sample_with_keys.mfd" yourusername@yourhostname.local:/home/yourusername/nfc
+		wget https://github.com/smolinde/nfc-tutorial/raw/master/nfc-templates/blank.mfd
+		wget https://github.com/smolinde/nfc-tutorial/raw/master/nfc-templates/blank_iPhone.mfd
+		wget https://github.com/smolinde/nfc-tutorial/raw/master/nfc-templates/sample_with_keys.mfd
 
-All three times you will be asked to type in your password. This is what we also have done. Now, [log in](#loginCommand) back to your Raspberry Pi, navigate inside the "nfc" folder, and open the blank dummy file:
+All three times you will get some download status output. When you have all three files downloaded, open the blank tag file with hexcurse:
 
-		cd nfc
 		hexcurse -r 16 blank.mfd
 
 You should see now something like this:
