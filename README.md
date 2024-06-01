@@ -562,7 +562,7 @@ In the following I will show some examples of what and how can be done on your i
 With your iPhone connected to the Raspberry Pi hotspot, open the [Safari](https://www.apple.com/safari/) browser and type in the hostname of your Raspberry Pi followed by ```.local```, just as in the [login command](#loginCommand). Tap "go". You should see something like this:
 <a name="accessBitsCalculatorInSafari"><p align="center"><img src="./images/screenshot_calculator_in_safari.png" height="600px"></img></p></a>
 
-You can use the calculator on your iPhone just like we saw in [3.3](33-access-bits-calculator).
+You can use the calculator on your iPhone just like we saw in [3.3](#33-access-bits-calculator).
 #### 6.3.2 Working with WebSSH
 Open the WebSSH app. In the section "Servers", add your Raspberry Pi by tapping the "+" icon. Don't use the hostname, use ```10.42.0.1``` instead! Also set the port to 22. Your configuration should look something like this:
 <a name="webSSHConfigurationWindow"><p align="center"><img src="./images/screenshot_webssh_configuration.png" height="600px"></img></p></a>
