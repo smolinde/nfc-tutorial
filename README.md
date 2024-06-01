@@ -40,13 +40,9 @@ Note that you have to change the position of the onboard switches to set the PN5
 Now to install the right operating system (OS) we have to download the [Raspberry Pi Imager](https://www.raspberrypi.com/software/). Open it on your PC and plug in your SD card. Now, select the device, in our case Raspberry Pi Zero 2W. For operating system, go to "Raspberry Pi OS (other)" > "Raspberry Pi OS Lite (32bit)". In storage part, select your SD card that you have plugged in before. Hit "NEXT". Now choose "EDIT SETTINGS". Here you can select a name for your Raspberry, your username and password, and set up your WiFi home network. Make sure you fill in the correct SSID and PSK (WiFi name and password), else you will have to do everything all over again. It should look something like this:<br>
 <a name="configurationOS"><p align="center"><img src="./images/configuration_raspbian.png" height="500px"></img></p></a>
 
-Hit "SAVE" and then "YES", and again "YES". At this point, say goodbye to everything that was stored previously on the SD card and wait until the program finishes the flash process. After termination, plug out the SD card and plug it into the Raspberry Pi. Now if you recall the [wiring diagram](#wiring), plug in your power supply into the <b>micro-USB port on the right!</b> The left port is for data transfer. Wait a few minutes. A green LED should be flashing in your Raspberry Pi and a red LED should be shining on the PN532 module. Make sure your computer is connected to the same network as your Raspberry Pi. Open a command line of your choice (I prefer using [Microsoft PowerShell](https://learn.microsoft.com/en-us/powershell/)). Now, let's take the credentials that I've chosen in [my configuration](#configurationOS) and try to connect the very first time via [SSH](https://en.wikipedia.org/wiki/Secure_Shell):
-
-<a name="loginCommand">
+Hit "SAVE" and then "YES", and again "YES". At this point, say goodbye to everything that was stored previously on the SD card and wait until the program finishes the flash process. After termination, plug out the SD card and plug it into the Raspberry Pi. Now if you recall the [wiring diagram](#wiring), plug in your power supply into the <b>micro-USB port on the right!</b> The left port is for data transfer. Wait a few minutes. A green LED should be flashing in your Raspberry Pi and a red LED should be shining on the PN532 module. Make sure your computer is connected to the same network as your Raspberry Pi. Open a command line of your choice (I prefer using [Microsoft PowerShell](https://learn.microsoft.com/en-us/powershell/)). Now, let's take the credentials that I've chosen in [my configuration](#configurationOS) and try to connect the very first time via [SSH](https://en.wikipedia.org/wiki/Secure_Shell):<a name="loginCommand"></a>
 
 		ssh smolinde@nfctutorial.local
-
-</a>
 
 The shell will prompt some security information. Ignore it, type in "yes" and hit <kbd>ENTER</kbd>. Now type in your password. Don't worry, although no letters appear on the screen, you are typing. After entering the password, hit <kbd>ENTER</kbd> again. Your screen should look something like this:<br>
 <a name="firstShellLogin"><p align="center"><img src="./images/first_ssh_login.png" width="700px"></img></p></a>
@@ -68,13 +64,9 @@ Type the following command in your command line and hit <kbd>ENTER</kbd>:
 
 		sudo raspi-config
 
-With arrow keys, navigate to "3 Interface Options", hit <kbd>ENTER</kbd>, navigate to "I3 SPI", and hit <kbd>ENTER</kbd> again. Select "\<Yes\>", hit <kbd>ENTER</kbd> two times. Now navigate to "6 Advanced Options", hit <kbd>ENTER</kbd>, now you should select "A1 Expand Filesystem" with <kbd>ENTER</kbd> again. Wait a little bit, hit <kbd>ENTER</kbd> after the file system was resized. Now hit the <kbd>TAB</kbd> key two times and <kbd>ENTER</kbd> to finish, save, and close Raspberry Pi configuration GUI. It will ask you whether you would like to reboot, hit <kbd>ENTER</kbd> to do so. Now wait a few moments until the Raspberry Pi reboots. Repeat the [login command](#loginCommand). Now we are going to set up the wireless hotspot that will be activated when your home network is out of reach. This will allow you to connect to the device anywhere from any device (later more). To do so, run the following command and replace "MyNetworkName" and "MySecurePassword" with a WiFi network name and a password of your choice:
-
-<a name="hotspotSetup">
+With arrow keys, navigate to "3 Interface Options", hit <kbd>ENTER</kbd>, navigate to "I3 SPI", and hit <kbd>ENTER</kbd> again. Select "\<Yes\>", hit <kbd>ENTER</kbd> two times. Now navigate to "6 Advanced Options", hit <kbd>ENTER</kbd>, now you should select "A1 Expand Filesystem" with <kbd>ENTER</kbd> again. Wait a little bit, hit <kbd>ENTER</kbd> after the file system was resized. Now hit the <kbd>TAB</kbd> key two times and <kbd>ENTER</kbd> to finish, save, and close Raspberry Pi configuration GUI. It will ask you whether you would like to reboot, hit <kbd>ENTER</kbd> to do so. Now wait a few moments until the Raspberry Pi reboots. Repeat the [login command](#loginCommand). Now we are going to set up the wireless hotspot that will be activated when your home network is out of reach. This will allow you to connect to the device anywhere from any device (later more). To do so, run the following command and replace "MyNetworkName" and "MySecurePassword" with a WiFi network name and a password of your choice:<a name="hotspotSetup"></a>
 
 		sudo nmcli dev wifi hotspot ifname wlan0 ssid "MyNetworkName" password "MySecurePassword"
-
-</a>
 
 The shell will disconnect immediately. Go to your computers WiFi settings, find the new network, and connect with the chosen password. After this, run the [login command](#loginCommand) in your command line again. Now you can run:
 
@@ -120,13 +112,9 @@ Press <kbd>CTRL</kbd>+<kbd>O</kbd>, <kbd>ENTER</kbd>, and then <kbd>CTRL</kbd>+<
 Wait until the process is finished and continue with the software setup section. Don't forget to connect your PC back to your home WiFi network.
 
 ### 2.5 Software Setup
-For now, we have successfully prepared the hardware and Raspberry Pi configurations. Now we have to install and configure software components that we will use throughout this tutorial. The following command will do most of the work:
-
-<a name="installEverything">
+For now, we have successfully prepared the hardware and Raspberry Pi configurations. Now we have to install and configure software components that we will use throughout this tutorial. The following command will do most of the work:<a name="installEverything"></a>
 
 		sudo apt install screen git apache2 hexcurse autotools-dev autoconf libtool libusb-dev liblzma-dev ipheth-utils -y
-
-</a>
 
 After installing all new components we will start with installation of [libnfc](https://nfc-tools.github.io/projects/libnfc/). This is an open-source library that allows us to work with NFC tags. Download the repository and go inside of the downloaded folder:
 
@@ -266,23 +254,16 @@ Copy the blank file and make yourself a sandbox:
 
 		cp blank.mfd sandbox.mfd
 
-Open the copied file with hexcurse:
-<a name="openSandbox">
+Open the copied file with hexcurse:<a name="openSandbox"></a>
 
 		hexcurse -r 16 sandbox.mfd
-
-</a>
 
 Now you can switch with <kbd>TAB</kbd> to the right side of your editor. With the arrow keys, navigate to line 5 (00000040) and type in "Hello World NFC!" This text is exactly 16 characters long and fits in one single data block. Now to save the file, hit <kbd>CTRL</kbd>+<kbd>X</kbd>, then <kbd>Y</kbd>, <kbd>ENTER</kbd>, and once again <kbd>CTRL</kbd>+<kbd>X</kbd>. Reopen the file with the [previous command](#openSandbox). Now to clear the row that you have written before, navigate with the arrow keys again to line 5 but this time in the left part of the editor. Place your cursor at the beginning of the line and hit <kbd>0</kbd> exactly 32 times. Save and close the file. Now you are able to read and manipulate the contents of a tag file. This is not intuitive and I strongly recommend to have a look at examples from the internet and also play around in the sandbox file to get a better feeling for this extraordinary data format. You might also choose another type of editor as well if you don't like hexcurse. Now we are ready to execute our first read and write operations.
 
 ### 3.5 Tag Operations
-Before running the actual manipulation commands explained in the next few chapters I want you to have a look on the help section of each of them. To do so, first run the following command:
-
-<a name="helpSectionClassic">
+Before running the actual manipulation commands explained in the next few chapters I want you to have a look on the help section of each of them. To do so, first run the following command:<a name="helpSectionClassic"></a>
 
 		nfc-mfclassic -h
-
-</a>
 
 The output shows you what commands are available. From my point of view, the descriptions are not very intuitive and I will therefore describe in own words how exactly to use these commands later. Now run:
 
@@ -295,12 +276,9 @@ The output is significantly shorter than the output of the previous command. Rea
 Again, changing the UID of a tag is only possible with the Chinese clones. Also double-check the version when ordering! You need the first version, because the second version of Chinese clones can only be changed with Android smartphones.
 
 #### 3.5.1 Read a Tag
-Now grab any tag of your choice. I recommend to use a Chinese clone as there is always the option to do a factory reset with those tags. If you run a faulty command on a common tag it might become corrupted and unusable. Don't waste your tags. Place the tag right beneath the PN532 module. It doesn't matter under which angle you place your tag as the reader has approximately 4cm oprating distance. Make sure you are in the "nfc" directory and run the following command:
-<a name="readCommand">
+Now grab any tag of your choice. I recommend to use a Chinese clone as there is always the option to do a factory reset with those tags. If you run a faulty command on a common tag it might become corrupted and unusable. Don't waste your tags. Place the tag right beneath the PN532 module. It doesn't matter under which angle you place your tag as the reader has approximately 4cm oprating distance. Make sure you are in the "nfc" directory and run the following command:<a name="readCommand"></a>
 
 		nfc-mfclassic r a u firstRead.mfd
-
-</a>
 
 Let the command read out the tag, it takes a few seconds. Now run:
 
